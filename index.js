@@ -5,17 +5,17 @@ const fs = require("fs").promises;
 require("dotenv").config();
 const {
   AIRTABLE_API_KEY,
-  AIRTABLE_SOURCE_BASE_ID,
-  AIRTABLE_DESTINATION_BASE_ID,
+  AIRTABLE_SOURCE_WORKSPACE,
+  AIRTABLE_DESTINATION_WORSPACE,
 } = process.env;
 
 Airtable.configure({ apiKey: AIRTABLE_API_KEY });
 
-const sourceBase = new Airtable({ apiKey: AIRTABLE_API_KEY }).base(
-  AIRTABLE_SOURCE_BASE_ID
+const sourceBase = Airtable.base(
+  AIRTABLE_SOURCE_WORKSPACE
 );
-const destinationBase = new Airtable({ apiKey: AIRTABLE_API_KEY }).base(
-  AIRTABLE_DESTINATION_BASE_ID
+const destinationBase = Airtable.base(
+  AIRTABLE_DESTINATION_WORSPACE
 );
 
 async function downloadFile(url, localPath) {
@@ -29,17 +29,12 @@ async function downloadFile(url, localPath) {
 }
 
 async function copyBases() {
-  const baseNames = [""];
-  const bases = await listBases();
+  // your table names
+  const tableNames = ["table1", "table2"];
   
-  for (const baseName of baseNames) {
-    const existingBase = bases.find((base) => base.name === baseName);
+  for (const tableName of tableNames) {
 
-  if (existingBase) {
-    console.log("Deleting existing base:", existingBase.id);
-    await deleteBase(existingBase.id);
-  }
-    const records = await sourceBase(baseName).select().all();
+    const records = await sourceBase(tableName).select().all();
 
     for (const record of records) {
       const fields = record.fields;
@@ -60,23 +55,13 @@ async function copyBases() {
           content: attachment.content,
         }));
       }
-      console.log("Create destination base:", existingBase.id);
-      await destinationBase(baseName).create([{ fields }]);
+      // The table name in the destination base must be the same as the source base
+      // @todo: check if the table exists in the destination base and create it if it doesn't
+      console.log("Create destination base:", tableName);
+      await destinationBase(tableName).create([{ fields }]);
     }
   }
 }
-
-const listBases = async () => {
-  const metaBase = new Airtable().base("app12345");
-  const bases = await metaBase("Bases").select().all();
-  return bases.map((base) => ({ id: base.id, name: base.get("Name") }));
-};
-
-const deleteBase = async (baseId) => {
-  const metaBase = new Airtable().base("app12345");
-  await metaBase("Bases").destroy(baseId);
-};
-
 
 const main = async () => {
   
